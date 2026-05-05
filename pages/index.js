@@ -6,6 +6,7 @@ export default function Home() {
   const [precio, setPrecio] = useState("");
   const [categoria, setCategoria] = useState("Comida");
   const [imagen, setImagen] = useState("");
+  const [busqueda, setBusqueda] = useState("");
 
   const categorias = ["Comida", "Ropa", "Hogar", "Servicios", "Otros"];
 
@@ -38,10 +39,33 @@ export default function Home() {
     reader.readAsDataURL(file);
   };
 
+  const compartir = (p) => {
+    const texto = `Mirá este producto:
+${p.nombre}
+💲 ${p.precio}
+📦 ${p.categoria}`;
+
+    window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`);
+  };
+
+  const filtrados = productos.filter(p =>
+    p.nombre.toLowerCase().includes(busqueda.toLowerCase())
+  );
+
   return (
     <div style={styles.container}>
+
       <h1>🛍 Mercado Junín</h1>
 
+      {/* BUSCADOR */}
+      <input
+        placeholder="Buscar producto..."
+        value={busqueda}
+        onChange={(e) => setBusqueda(e.target.value)}
+        style={styles.input}
+      />
+
+      {/* FORM */}
       <div style={styles.card}>
 
         <input
@@ -75,27 +99,46 @@ export default function Home() {
           style={styles.input}
         />
 
-        {imagen && (
-          <img src={imagen} style={styles.preview} />
-        )}
-
         <button onClick={agregarProducto} style={styles.button}>
           Publicar
         </button>
       </div>
 
+      {/* PRODUCTOS */}
       <div style={{ width: "100%", maxWidth: 500 }}>
-        {productos.map(p => (
+        {filtrados.map(p => (
           <div key={p.id} style={styles.producto}>
+
             {p.imagen && (
               <img src={p.imagen} style={styles.img} />
             )}
+
             <h3>{p.nombre}</h3>
             <p>💲 {p.precio}</p>
             <p>📦 {p.categoria}</p>
+
+            <div style={{ display: "flex", gap: 10 }}>
+
+              <button
+                onClick={() => compartir(p)}
+                style={styles.wa}
+              >
+                WhatsApp
+              </button>
+
+              <button
+                onClick={() => alert("Producto compartido")}
+                style={styles.share}
+              >
+                Compartir
+              </button>
+
+            </div>
+
           </div>
         ))}
       </div>
+
     </div>
   );
 }
@@ -144,9 +187,20 @@ const styles = {
     borderRadius: 10,
     marginBottom: 10
   },
-  preview: {
-    width: "100%",
-    borderRadius: 10,
-    marginBottom: 10
+  wa: {
+    flex: 1,
+    background: "#25D366",
+    color: "white",
+    border: "none",
+    padding: 10,
+    borderRadius: 8
+  },
+  share: {
+    flex: 1,
+    background: "#333",
+    color: "white",
+    border: "none",
+    padding: 10,
+    borderRadius: 8
   }
 };
