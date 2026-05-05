@@ -1,10 +1,6 @@
 import { useEffect, useState } from "react";
 import { db, auth } from "../lib/firebase";
-import {
-  collection,
-  addDoc,
-  getDocs
-} from "firebase/firestore";
+import { collection, addDoc, getDocs } from "firebase/firestore";
 import {
   GoogleAuthProvider,
   signInWithPopup,
@@ -15,6 +11,8 @@ export default function Home() {
   const [user, setUser] = useState(null);
 
   const [productos, setProductos] = useState([]);
+  const [vista, setVista] = useState("home");
+
   const [nombre, setNombre] = useState("");
   const [precio, setPrecio] = useState("");
   const [categoria, setCategoria] = useState("Comida");
@@ -24,6 +22,7 @@ export default function Home() {
 
   const categorias = ["Comida", "Ropa", "Hogar", "Servicios", "Otros"];
 
+  // 🔥 CARGAR PRODUCTOS
   const cargar = async () => {
     const snap = await getDocs(collection(db, "productos"));
     setProductos(snap.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -33,6 +32,7 @@ export default function Home() {
     cargar();
   }, []);
 
+  // 🔐 LOGIN
   const login = async () => {
     const result = await signInWithPopup(auth, provider);
     setUser(result.user);
@@ -43,13 +43,19 @@ export default function Home() {
     setUser(null);
   };
 
+  // 📸 IMAGEN
   const subirImagen = (e) => {
     const file = e.target.files[0];
+    if (!file) return;
+
     const reader = new FileReader();
-    reader.onloadend = () => setImagen(reader.result);
+    reader.onloadend = () => {
+      setImagen(reader.result);
+    };
     reader.readAsDataURL(file);
   };
 
+  // 📦 PUBLICAR
   const publicar = async () => {
     if (!nombre || !precio) return;
 
@@ -67,78 +73,116 @@ export default function Home() {
     cargar();
   };
 
+  // 💬 WHATSAPP
   const whatsapp = (p) => {
     const msg = `Producto: ${p.nombre} 💲${p.precio}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`);
   };
 
+  const misProductos = user
+    ? productos.filter(p => p.usuario === user.displayName)
+    : [];
+
   return (
     <div style={styles.container}>
 
-      {/* LOGIN */}
+      {/* NAV */}
       <div style={styles.nav}>
         {user ? (
           <>
-            <p>👤 {user.displayName}</p>
-            <button onClick={logout}>Cerrar sesión</button>
+            <span>👤 {user.displayName}</span>
+            <button onClick={logout}>Salir</button>
           </>
         ) : (
           <button onClick={login}>Entrar con Google</button>
         )}
+
+        <button onClick={() => setVista("home")}>Inicio</button>
+        <button onClick={() => setVista("mis")}>Mis publicaciones</button>
       </div>
 
-      <h1>🛍 Mercado Junín PRO</h1>
+      <h1>🛍 Mercado Junín</h1>
 
-      {/* FORM */}
-      <div style={styles.card}>
-        <input placeholder="Nombre"
-          value={nombre}
-          onChange={(e) => setNombre(e.target.value)}
-          style={styles.input}
-        />
+      {/* HOME */}
+      {vista === "home" && (
+        <>
+          <div style={styles.card}>
 
-        <input placeholder="Precio"
-          value={precio}
-          onChange={(e) => setPrecio(e.target.value)}
-          style={styles.input}
-        />
+            <input
+              placeholder="Nombre del producto"
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+              style={styles.input}
+            />
 
-        <select
-          value={categoria}
-          onChange={(e) => setCategoria(e.target.value)}
-          style={styles.input}
-        >
-          {categorias.map(c => (
-            <option key={c}>{c}</option>
+            <input
+              placeholder="Precio"
+              value={precio}
+              onChange={(e) => setPrecio(e.target.value)}
+              style={styles.input}
+            />
+
+            <select
+              value={categoria}
+              onChange={(e) => setCategoria(e.target.value)}
+              style={styles.input}
+            >
+              {categorias.map(c => (
+                <option key={c}>{c}</option>
+              ))}
+            </select>
+
+            <input type="file" onChange={subirImagen} style={styles.input} />
+
+            <button onClick={publicar} style={styles.btn}>
+              Publicar
+            </button>
+
+          </div>
+
+          {productos.map(p => (
+            <div key={p.id} style={styles.card}>
+
+              {p.imagen && (
+                <img src={p.imagen} style={styles.img} />
+              )}
+
+              <h3>{p.nombre}</h3>
+              <p>💲 {p.precio}</p>
+              <p>📦 {p.categoria}</p>
+              <p>👤 {p.usuario}</p>
+
+              <button onClick={() => whatsapp(p)} style={styles.wa}>
+                WhatsApp
+              </button>
+
+            </div>
           ))}
-        </select>
+        </>
+      )}
 
-        <input type="file" onChange={subirImagen} style={styles.input} />
+      {/* MIS PUBLICACIONES */}
+      {vista === "mis" && user && (
+        <>
+          <h2>📦 Mis publicaciones</h2>
 
-        <button onClick={publicar} style={styles.btn}>
-          Publicar producto
-        </button>
-      </div>
-
-      {/* PRODUCTOS */}
-      {productos.map(p => (
-        <div key={p.id} style={styles.card}>
-
-          {p.imagen && (
-            <img src={p.imagen} style={styles.img} />
+          {misProductos.length === 0 && (
+            <p>No tenés productos todavía</p>
           )}
 
-          <h3>{p.nombre}</h3>
-          <p>💲 {p.precio}</p>
-          <p>📦 {p.categoria}</p>
-          <p>👤 {p.usuario}</p>
+          {misProductos.map(p => (
+            <div key={p.id} style={styles.card}>
+              {p.imagen && (
+                <img src={p.imagen} style={styles.img} />
+              )}
 
-          <button onClick={() => whatsapp(p)} style={styles.wa}>
-            WhatsApp
-          </button>
-
-        </div>
-      ))}
+              <h3>{p.nombre}</h3>
+              <p>💲 {p.precio}</p>
+              <p>📦 {p.categoria}</p>
+            </div>
+          ))}
+        </>
+      )}
 
     </div>
   );
@@ -153,8 +197,10 @@ const styles = {
   },
   nav: {
     display: "flex",
-    justifyContent: "space-between",
-    marginBottom: 20
+    justifyContent: "space-around",
+    marginBottom: 20,
+    flexWrap: "wrap",
+    gap: 10
   },
   card: {
     background: "white",
