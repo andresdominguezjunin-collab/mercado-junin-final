@@ -5,6 +5,7 @@ export default function Home() {
   const [nombre, setNombre] = useState("");
   const [precio, setPrecio] = useState("");
   const [categoria, setCategoria] = useState("Comida");
+  const [imagen, setImagen] = useState("");
 
   const categorias = ["Comida", "Ropa", "Hogar", "Servicios", "Otros"];
 
@@ -15,21 +16,34 @@ export default function Home() {
       id: Date.now(),
       nombre,
       precio,
-      categoria
+      categoria,
+      imagen
     };
 
     setProductos([nuevo, ...productos]);
+
     setNombre("");
     setPrecio("");
+    setImagen("");
+  };
+
+  const subirImagen = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagen(reader.result);
+    };
+    reader.readAsDataURL(file);
   };
 
   return (
     <div style={styles.container}>
-
       <h1>🛍 Mercado Junín</h1>
 
-      {/* FORM */}
       <div style={styles.card}>
+
         <input
           placeholder="Nombre del producto"
           value={nombre}
@@ -54,22 +68,34 @@ export default function Home() {
           ))}
         </select>
 
+        <input
+          type="file"
+          accept="image/*"
+          onChange={subirImagen}
+          style={styles.input}
+        />
+
+        {imagen && (
+          <img src={imagen} style={styles.preview} />
+        )}
+
         <button onClick={agregarProducto} style={styles.button}>
           Publicar
         </button>
       </div>
 
-      {/* LISTA */}
       <div style={{ width: "100%", maxWidth: 500 }}>
         {productos.map(p => (
           <div key={p.id} style={styles.producto}>
+            {p.imagen && (
+              <img src={p.imagen} style={styles.img} />
+            )}
             <h3>{p.nombre}</h3>
             <p>💲 {p.precio}</p>
             <p>📦 {p.categoria}</p>
           </div>
         ))}
       </div>
-
     </div>
   );
 }
@@ -110,6 +136,16 @@ const styles = {
   producto: {
     background: "white",
     padding: 10,
+    borderRadius: 10,
+    marginBottom: 10
+  },
+  img: {
+    width: "100%",
+    borderRadius: 10,
+    marginBottom: 10
+  },
+  preview: {
+    width: "100%",
     borderRadius: 10,
     marginBottom: 10
   }
