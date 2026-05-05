@@ -18,6 +18,8 @@ export default function Home() {
   const [categoria, setCategoria] = useState("Comida");
   const [imagen, setImagen] = useState("");
 
+  const [busqueda, setBusqueda] = useState("");
+
   const provider = new GoogleAuthProvider();
 
   const categorias = ["Comida", "Ropa", "Hogar", "Servicios", "Otros"];
@@ -64,7 +66,8 @@ export default function Home() {
       precio,
       categoria,
       imagen,
-      usuario: user ? user.displayName : "invitado"
+      usuario: user ? user.displayName : "invitado",
+      fecha: new Date()
     });
 
     setNombre("");
@@ -82,6 +85,10 @@ export default function Home() {
   const misProductos = user
     ? productos.filter(p => p.usuario === user.displayName)
     : [];
+
+  const productosFiltrados = productos.filter(p =>
+    p.nombre?.toLowerCase().includes(busqueda.toLowerCase())
+  );
 
   return (
     <div style={styles.container}>
@@ -102,6 +109,14 @@ export default function Home() {
       </div>
 
       <h1>🛍 Mercado Junín</h1>
+
+      {/* BUSCADOR */}
+      <input
+        placeholder="Buscar producto..."
+        value={busqueda}
+        onChange={(e) => setBusqueda(e.target.value)}
+        style={styles.input}
+      />
 
       {/* HOME */}
       {vista === "home" && (
@@ -140,96 +155,7 @@ export default function Home() {
 
           </div>
 
-          {productos.map(p => (
+          {productosFiltrados.map(p => (
             <div key={p.id} style={styles.card}>
 
-              {p.imagen && (
-                <img src={p.imagen} style={styles.img} />
-              )}
-
-              <h3>{p.nombre}</h3>
-              <p>💲 {p.precio}</p>
-              <p>📦 {p.categoria}</p>
-              <p>👤 {p.usuario}</p>
-
-              <button onClick={() => whatsapp(p)} style={styles.wa}>
-                WhatsApp
-              </button>
-
-            </div>
-          ))}
-        </>
-      )}
-
-      {/* MIS PUBLICACIONES */}
-      {vista === "mis" && user && (
-        <>
-          <h2>📦 Mis publicaciones</h2>
-
-          {misProductos.length === 0 && (
-            <p>No tenés productos todavía</p>
-          )}
-
-          {misProductos.map(p => (
-            <div key={p.id} style={styles.card}>
-              {p.imagen && (
-                <img src={p.imagen} style={styles.img} />
-              )}
-
-              <h3>{p.nombre}</h3>
-              <p>💲 {p.precio}</p>
-              <p>📦 {p.categoria}</p>
-            </div>
-          ))}
-        </>
-      )}
-
-    </div>
-  );
-}
-
-const styles = {
-  container: {
-    background: "#ffe600",
-    minHeight: "100vh",
-    padding: 20,
-    fontFamily: "Arial"
-  },
-  nav: {
-    display: "flex",
-    justifyContent: "space-around",
-    marginBottom: 20,
-    flexWrap: "wrap",
-    gap: 10
-  },
-  card: {
-    background: "white",
-    padding: 15,
-    marginBottom: 15,
-    borderRadius: 10
-  },
-  input: {
-    width: "100%",
-    padding: 10,
-    marginBottom: 10
-  },
-  btn: {
-    width: "100%",
-    padding: 10,
-    background: "#3483fa",
-    color: "white",
-    border: "none"
-  },
-  img: {
-    width: "100%",
-    borderRadius: 10
-  },
-  wa: {
-    width: "100%",
-    marginTop: 10,
-    padding: 10,
-    background: "#25D366",
-    color: "white",
-    border: "none"
-  }
-};
+              {p.imagen
