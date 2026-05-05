@@ -1,47 +1,46 @@
 import { useEffect, useState } from "react";
-import { db } from "../lib/firebase";
+import { db, auth } from "../lib/firebase";
 import {
   collection,
   addDoc,
   getDocs
 } from "firebase/firestore";
+import {
+  GoogleAuthProvider,
+  signInWithPopup,
+  signOut
+} from "firebase/auth";
 
 export default function Home() {
-  const [productos, setProductos] = useState([]);
+  const [user, setUser] = useState(null);
 
+  const [productos, setProductos] = useState([]);
   const [nombre, setNombre] = useState("");
   const [precio, setPrecio] = useState("");
   const [categoria, setCategoria] = useState("Comida");
   const [imagen, setImagen] = useState("");
 
+  const provider = new GoogleAuthProvider();
+
   const categorias = ["Comida", "Ropa", "Hogar", "Servicios", "Otros"];
 
-  // 🔥 CARGAR PRODUCTOS
   const cargar = async () => {
     const snap = await getDocs(collection(db, "productos"));
-    const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    setProductos(data);
+    setProductos(snap.docs.map(d => ({ id: d.id, ...d.data() })));
   };
 
   useEffect(() => {
     cargar();
   }, []);
 
-  // 🔥 SUBIR PRODUCTO
-  const publicar = async () => {
-    if (!nombre || !precio) return;
+  const login = async () => {
+    const result = await signInWithPopup(auth, provider);
+    setUser(result.user);
+  };
 
-    await addDoc(collection(db, "productos"), {
-      nombre,
-      precio,
-      categoria,
-      imagen
-    });
-
-    setNombre("");
-    setPrecio("");
-    setImagen("");
-    cargar();
+  const logout = async () => {
+    await signOut(auth);
+    setUser(null);
   };
 
   const subirImagen = (e) => {
@@ -49,6 +48,23 @@ export default function Home() {
     const reader = new FileReader();
     reader.onloadend = () => setImagen(reader.result);
     reader.readAsDataURL(file);
+  };
+
+  const publicar = async () => {
+    if (!nombre || !precio) return;
+
+    await addDoc(collection(db, "productos"), {
+      nombre,
+      precio,
+      categoria,
+      imagen,
+      usuario: user ? user.displayName : "invitado"
+    });
+
+    setNombre("");
+    setPrecio("");
+    setImagen("");
+    cargar();
   };
 
   const whatsapp = (p) => {
@@ -59,10 +75,22 @@ export default function Home() {
   return (
     <div style={styles.container}>
 
+      {/* LOGIN */}
+      <div style={styles.nav}>
+        {user ? (
+          <>
+            <p>👤 {user.displayName}</p>
+            <button onClick={logout}>Cerrar sesión</button>
+          </>
+        ) : (
+          <button onClick={login}>Entrar con Google</button>
+        )}
+      </div>
+
       <h1>🛍 Mercado Junín PRO</h1>
 
+      {/* FORM */}
       <div style={styles.card}>
-
         <input placeholder="Nombre"
           value={nombre}
           onChange={(e) => setNombre(e.target.value)}
@@ -80,17 +108,19 @@ export default function Home() {
           onChange={(e) => setCategoria(e.target.value)}
           style={styles.input}
         >
-          {categorias.map(c => <option key={c}>{c}</option>)}
+          {categorias.map(c => (
+            <option key={c}>{c}</option>
+          ))}
         </select>
 
         <input type="file" onChange={subirImagen} style={styles.input} />
 
         <button onClick={publicar} style={styles.btn}>
-          Publicar
+          Publicar producto
         </button>
-
       </div>
 
+      {/* PRODUCTOS */}
       {productos.map(p => (
         <div key={p.id} style={styles.card}>
 
@@ -101,6 +131,7 @@ export default function Home() {
           <h3>{p.nombre}</h3>
           <p>💲 {p.precio}</p>
           <p>📦 {p.categoria}</p>
+          <p>👤 {p.usuario}</p>
 
           <button onClick={() => whatsapp(p)} style={styles.wa}>
             WhatsApp
@@ -119,6 +150,11 @@ const styles = {
     minHeight: "100vh",
     padding: 20,
     fontFamily: "Arial"
+  },
+  nav: {
+    display: "flex",
+    justifyContent: "space-between",
+    marginBottom: 20
   },
   card: {
     background: "white",
