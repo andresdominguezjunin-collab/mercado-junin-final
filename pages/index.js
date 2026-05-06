@@ -1,8 +1,8 @@
+"use client";
 import { useEffect, useState } from "react";
 import { db, auth } from "../lib/firebase";
 import {
   collection,
-  addDoc,
   getDocs
 } from "firebase/firestore";
 import {
@@ -14,18 +14,18 @@ import {
 export default function Home() {
   const [user, setUser] = useState(null);
   const [productos, setProductos] = useState([]);
+  const [sponsors, setSponsors] = useState([]);
   const [vista, setVista] = useState("home");
   const [vendedor, setVendedor] = useState(null);
-
-  const [nombre, setNombre] = useState("");
-  const [precio, setPrecio] = useState("");
 
   const provider = new GoogleAuthProvider();
 
   const cargar = async () => {
-    const snap = await getDocs(collection(db, "productos"));
-    const lista = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    setProductos(lista);
+    const prodSnap = await getDocs(collection(db, "productos"));
+    const sponsSnap = await getDocs(collection(db, "sponsors"));
+
+    setProductos(prodSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+    setSponsors(sponsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
   };
 
   useEffect(() => {
@@ -42,23 +42,6 @@ export default function Home() {
     setUser(null);
   };
 
-  const publicar = async () => {
-    if (!user) return alert("Iniciá sesión");
-
-    await addDoc(collection(db, "productos"), {
-      nombre,
-      precio,
-      usuario: user.displayName,
-      whatsapp: user.phoneNumber || "",
-      fecha: new Date(),
-      destacado: false
-    });
-
-    setNombre("");
-    setPrecio("");
-    cargar();
-  };
-
   const abrirPerfil = (userName) => {
     setVendedor(userName);
     setVista("perfil");
@@ -66,7 +49,6 @@ export default function Home() {
 
   const volver = () => {
     setVista("home");
-    setVendedor(null);
   };
 
   const productosVendedor = productos.filter(
@@ -83,31 +65,36 @@ export default function Home() {
           <button onClick={logout}>Salir</button>
         </>
       ) : (
-        <button onClick={login}>Entrar con Google</button>
+        <button onClick={login}>Entrar</button>
       )}
 
       <hr />
 
+      {/* 🔥 SPONSORS */}
       {vista === "home" && (
         <>
-          <h3>Publicar</h3>
+          <h3>🏆 Sponsors</h3>
 
-          <input
-            placeholder="Nombre"
-            value={nombre}
-            onChange={(e) => setNombre(e.target.value)}
-          />
-
-          <input
-            placeholder="Precio"
-            value={precio}
-            onChange={(e) => setPrecio(e.target.value)}
-          />
-
-          <button onClick={publicar}>Publicar</button>
+          <div style={{ display: "flex", gap: 10, overflowX: "auto" }}>
+            {sponsors
+              .filter(s => s.activo)
+              .map(s => (
+                <div key={s.id} style={{ background: "white", padding: 10 }}>
+                  <img
+                    src={s.logo}
+                    style={{ width: 80, height: 80, objectFit: "contain" }}
+                    onClick={() => window.open(s.link)}
+                  />
+                </div>
+              ))}
+          </div>
 
           <hr />
+        </>
+      )}
 
+      {vista === "home" && (
+        <>
           <h3>Productos</h3>
 
           {productos.map(p => (
@@ -128,7 +115,7 @@ export default function Home() {
         <>
           <button onClick={volver}>⬅ Volver</button>
 
-          <h3>🏪 Tienda de {vendedor}</h3>
+          <h3>🏪 {vendedor}</h3>
 
           {productosVendedor.map(p => (
             <div key={p.id} style={{ background: "white", margin: 10, padding: 10 }}>
