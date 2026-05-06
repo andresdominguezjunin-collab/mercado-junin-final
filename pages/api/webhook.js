@@ -1,38 +1,44 @@
 import mercadopago from "mercadopago";
+import { db } from "../../lib/firebase";
+import { doc, updateDoc, addDoc, collection } from "firebase/firestore";
 
 mercadopago.configure({
   access_token: process.env.MP_ACCESS_TOKEN,
 });
 
 export default async function handler(req, res) {
-  const { productoId } = req.body;
-
   try {
-    const preference = {
-      items: [
-        {
-          title: "Destacar producto",
-          quantity: 1,
-          currency_id: "ARS",
-          unit_price: 1000,
-        },
-      ],
-      metadata: {
-        productoId: productoId,
-      },
-      notification_url: "https://TU-APP.vercel.app/api/webhook",
-      back_urls: {
-        success: "https://TU-APP.vercel.app",
-        failure: "https://TU-APP.vercel.app",
-      },
-      auto_return: "approved",
-    };
+    const data = req.body;
 
-    const response = await mercadopago.preferences.create(preference);
+    if (data.type === "payment") {
+      const payment = await mercadopago.payment.findById(data.data.id);
 
-    res.status(200).json({ id: response.body.id });
+      if (payment.body.status === "approved") {
+        const meta = payment.body.metadata;
+
+        // ⭐ DESTACAR PRODUCTO
+        if (meta.tipo === "destacar") {
+          await updateDoc(doc(db, "productos", meta.productoId), {
+            destacado: true,
+          });
+        }
+
+        // 🏆 CREAR SPONSOR
+        if (meta.tipo === "sponsor") {
+          await addDoc(collection(db, "sponsors"), {
+            nombre: "Nuevo Sponsor",
+            logo: "",
+            link: "",
+            activo: true,
+          });
+        }
+      }
+    }
+
+    res.status(200).send("ok");
 
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.log(error);
+    res.status(500).send("error");
   }
 }
