@@ -1,143 +1,61 @@
-"use client";
-import { useEffect, useState } from "react";
-import { db, auth } from "../lib/firebase";
-import {
-  collection,
-  getDocs
-} from "firebase/firestore";
-import {
-  GoogleAuthProvider,
-  signInWithPopup,
-  signOut
-} from "firebase/auth";
+import mercadopago from "mercadopago";
 
-export default function Home() {
-  const [user, setUser] = useState(null);
-  const [productos, setProductos] = useState([]);
-  const [sponsors, setSponsors] = useState([]);
-  const [vista, setVista] = useState("home");
-  const [vendedor, setVendedor] = useState(null);
+mercadopago.configure({
+  access_token: process.env.MP_ACCESS_TOKEN,
+});
 
-  const provider = new GoogleAuthProvider();
+export default async function handler(req, res) {
+  const { tipo, productoId } = req.body;
 
-  const cargar = async () => {
-    const prodSnap = await getDocs(collection(db, "productos"));
-    const sponsSnap = await getDocs(collection(db, "sponsors"));
+  try {
+    let preference = {};
 
-    setProductos(prodSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-    setSponsors(sponsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-  };
+    if (tipo === "destacar") {
+      preference = {
+        items: [
+          {
+            title: "Destacar producto",
+            quantity: 1,
+            currency_id: "ARS",
+            unit_price: 1000,
+          },
+        ],
+        metadata: {
+          tipo: "destacar",
+          productoId,
+        },
+        back_urls: {
+          success: "https://TU-APP.vercel.app",
+        },
+        auto_return: "approved",
+      };
+    }
 
-  useEffect(() => {
-    cargar();
-  }, []);
+    if (tipo === "sponsor") {
+      preference = {
+        items: [
+          {
+            title: "Sponsor mensual",
+            quantity: 1,
+            currency_id: "ARS",
+            unit_price: 5000,
+          },
+        ],
+        metadata: {
+          tipo: "sponsor",
+        },
+        back_urls: {
+          success: "https://TU-APP.vercel.app/sponsor",
+        },
+        auto_return: "approved",
+      };
+    }
 
-  const login = async () => {
-    const res = await signInWithPopup(auth, provider);
-    setUser(res.user);
-  };
+    const response = await mercadopago.preferences.create(preference);
 
-  const logout = async () => {
-    await signOut(auth);
-    setUser(null);
-  };
+    res.status(200).json({ id: response.body.id });
 
-  const abrirPerfil = (userName) => {
-    setVendedor(userName);
-    setVista("perfil");
-  };
-
-  const volver = () => {
-    setVista("home");
-  };
-
-  const productosVendedor = productos.filter(
-    p => p.usuario === vendedor
-  );
-
-  return (
-    <div style={{ padding: 20, background: "#ffe600", minHeight: "100vh" }}>
-      <h2>🛍 Mercado Junín</h2>
-
-      {user ? (
-        <>
-          <p>👤 {user.displayName}</p>
-          <button onClick={logout}>Salir</button>
-        </>
-      ) : (
-        <button onClick={login}>Entrar</button>
-      )}
-
-      <hr />
-
-      {/* 🔥 SPONSORS */}
-      {vista === "home" && (
-        <>
-          <h3>🏆 Sponsors</h3>
-
-          <div style={{ display: "flex", gap: 10, overflowX: "auto" }}>
-            {sponsors
-              .filter(s => s.activo)
-              .map(s => (
-                <div key={s.id} style={{ background: "white", padding: 10 }}>
-                  <img
-                    src={s.logo}
-                    style={{ width: 80, height: 80, objectFit: "contain" }}
-                    onClick={() => window.open(s.link)}
-                  />
-                </div>
-              ))}
-          </div>
-
-          <hr />
-        </>
-      )}
-
-      {vista === "home" && (
-        <>
-          <h3>Productos</h3>
-
-          {productos.map(p => (
-            <div key={p.id} style={{ background: "white", margin: 10, padding: 10 }}>
-              <b>{p.nombre}</b> - ${p.precio}
-
-              <br />
-
-              <button onClick={() => abrirPerfil(p.usuario)}>
-                Ver tienda
-              </button>
-            </div>
-          ))}
-        </>
-      )}
-
-      {vista === "perfil" && (
-        <>
-          <button onClick={volver}>⬅ Volver</button>
-
-          <h3>🏪 {vendedor}</h3>
-
-          {productosVendedor.map(p => (
-            <div key={p.id} style={{ background: "white", margin: 10, padding: 10 }}>
-              <b>{p.nombre}</b> - ${p.precio}
-
-              <br />
-
-              <button
-                onClick={() =>
-                  window.open(
-                    `https://wa.me/?text=${encodeURIComponent(
-                      "Hola, te consulto por " + p.nombre
-                    )}`
-                  )
-                }
-              >
-                WhatsApp
-              </button>
-            </div>
-          ))}
-        </>
-      )}
-    </div>
-  );
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 }
