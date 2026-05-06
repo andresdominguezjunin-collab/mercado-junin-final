@@ -18,7 +18,7 @@ export default async function handler(req, res) {
         },
       ],
       metadata: {
-        productoId: productoId, // 🔥 CLAVE
+        productoId: productoId,
       },
       notification_url: "https://TU-APP.vercel.app/api/webhook",
       back_urls: {
