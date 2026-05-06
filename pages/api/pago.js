@@ -5,9 +5,7 @@ mercadopago.configure({
 });
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Método no permitido" });
-  }
+  const { productoId } = req.body;
 
   try {
     const preference = {
@@ -19,6 +17,10 @@ export default async function handler(req, res) {
           unit_price: 1000,
         },
       ],
+      metadata: {
+        productoId: productoId, // 🔥 CLAVE
+      },
+      notification_url: "https://TU-APP.vercel.app/api/webhook",
       back_urls: {
         success: "https://TU-APP.vercel.app",
         failure: "https://TU-APP.vercel.app",
