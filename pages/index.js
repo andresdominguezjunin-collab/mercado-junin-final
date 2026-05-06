@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import { db, auth } from "../lib/firebase";
-import { collection, addDoc, getDocs } from "firebase/firestore";
+import {
+  collection,
+  addDoc,
+  getDocs,
+  deleteDoc,
+  doc,
+  updateDoc
+} from "firebase/firestore";
 import {
   GoogleAuthProvider,
   signInWithPopup,
@@ -25,12 +32,14 @@ export default function Home() {
   const cargar = async () => {
     const snap = await getDocs(collection(db, "productos"));
 
-    const lista = snap.docs.map(d => ({
+    let lista = snap.docs.map(d => ({
       id: d.id,
       ...d.data()
     }));
 
     lista.sort((a, b) => {
+      if (a.destacado && !b.destacado) return -1;
+      if (!a.destacado && b.destacado) return 1;
       if (!a.fecha || !b.fecha) return 0;
       return b.fecha.seconds - a.fecha.seconds;
     });
@@ -70,12 +79,54 @@ export default function Home() {
       categoria,
       imagen,
       usuario: user ? user.displayName : "invitado",
-      fecha: new Date()
+      fecha: new Date(),
+      destacado: false
     });
 
     setNombre("");
     setPrecio("");
     setImagen("");
+    cargar();
+  };
+
+  // 🔥 DESTACAR CON PAGO
+  const destacar = async (p) => {
+    try {
+      const res = await fetch("/api/pago", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          productoId: p.id,
+        }),
+      });
+
+      const data = await res.json();
+
+      window.open(
+        `https://www.mercadopago.com.ar/checkout/v1/redirect?pref_id=${data.id}`,
+        "_blank"
+      );
+
+    } catch (err) {
+      alert("Error al iniciar pago");
+    }
+  };
+
+  const borrar = async (id) => {
+    await deleteDoc(doc(db, "productos", id));
+    cargar();
+  };
+
+  const editar = async (p) => {
+    const nuevoPrecio = prompt("Nuevo precio:", p.precio);
+    if (!nuevoPrecio) return;
+
+    await updateDoc(doc(db, "productos", p.id), {
+      precio: nuevoPrecio
+    });
+
     cargar();
   };
 
@@ -95,88 +146,62 @@ export default function Home() {
   return (
     <div style={styles.container}>
 
-      {/* HEADER */}
       <div style={styles.header}>
-        <h2 style={{ margin: 0 }}>🛍 Mercado Junín</h2>
+        <h2>🛍 Mercado Junín</h2>
 
-        <div style={styles.headerRight}>
+        <div>
           {user ? (
             <>
-              <span style={styles.user}>👤 {user.displayName}</span>
-              <button onClick={logout} style={styles.btnSmall}>Salir</button>
+              <span>👤 {user.displayName}</span>
+              <button onClick={logout}>Salir</button>
             </>
           ) : (
-            <button onClick={login} style={styles.btnSmall}>Entrar</button>
+            <button onClick={login}>Entrar</button>
           )}
         </div>
       </div>
 
-      {/* BUSCADOR */}
       <input
-        placeholder="🔍 Buscar productos..."
+        placeholder="🔍 Buscar..."
         value={busqueda}
         onChange={(e) => setBusqueda(e.target.value)}
         style={styles.search}
       />
 
-      {/* MENU */}
       <div style={styles.menu}>
-        <button onClick={() => setVista("home")} style={styles.menuBtn}>Inicio</button>
-        <button onClick={() => setVista("mis")} style={styles.menuBtn}>Mis publicaciones</button>
+        <button onClick={() => setVista("home")}>Inicio</button>
+        <button onClick={() => setVista("mis")}>Mis publicaciones</button>
       </div>
 
-      {/* FORM */}
       {vista === "home" && (
-        <div style={styles.cardForm}>
-
-          <input
-            placeholder="Nombre del producto"
-            value={nombre}
-            onChange={(e) => setNombre(e.target.value)}
-            style={styles.input}
-          />
-
-          <input
-            placeholder="Precio"
-            value={precio}
-            onChange={(e) => setPrecio(e.target.value)}
-            style={styles.input}
-          />
-
-          <select
-            value={categoria}
-            onChange={(e) => setCategoria(e.target.value)}
-            style={styles.input}
-          >
-            {categorias.map(c => (
-              <option key={c}>{c}</option>
-            ))}
+        <div style={styles.form}>
+          <input placeholder="Nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} />
+          <input placeholder="Precio" value={precio} onChange={(e) => setPrecio(e.target.value)} />
+          <select value={categoria} onChange={(e) => setCategoria(e.target.value)}>
+            {categorias.map(c => <option key={c}>{c}</option>)}
           </select>
-
-          <input type="file" onChange={subirImagen} style={styles.input} />
-
-          <button onClick={publicar} style={styles.btnPrimary}>
-            Publicar producto
-          </button>
-
+          <input type="file" onChange={subirImagen} />
+          <button onClick={publicar}>Publicar</button>
         </div>
       )}
 
-      {/* PRODUCTOS */}
       {vista === "home" && (
         <div style={styles.grid}>
           {productosFiltrados.map(p => (
-            <div key={p.id} style={styles.card}>
+            <div
+              key={p.id}
+              style={{
+                ...styles.card,
+                border: p.destacado ? "3px solid gold" : "none"
+              }}
+            >
 
-              {p.imagen && (
-                <img src={p.imagen} style={styles.img} />
-              )}
+              {p.destacado && <div style={styles.badge}>⭐ Destacado</div>}
 
-              <div style={styles.info}>
-                <h3>{p.nombre}</h3>
-                <p style={styles.price}>💲 {p.precio}</p>
-                <p style={styles.cat}>{p.categoria}</p>
-              </div>
+              {p.imagen && <img src={p.imagen} style={styles.img} />}
+
+              <h3>{p.nombre}</h3>
+              <p>💲 {p.precio}</p>
 
               <button onClick={() => whatsapp(p)} style={styles.wa}>
                 WhatsApp
@@ -187,23 +212,23 @@ export default function Home() {
         </div>
       )}
 
-      {/* MIS PUBLICACIONES */}
       {vista === "mis" && user && (
-        <>
-          <h3>📦 Mis productos</h3>
+        <div>
+          <h3>Mis productos</h3>
 
-          <div style={styles.grid}>
-            {misProductos.map(p => (
-              <div key={p.id} style={styles.card}>
-                {p.imagen && (
-                  <img src={p.imagen} style={styles.img} />
-                )}
-                <h4>{p.nombre}</h4>
-                <p>💲 {p.precio}</p>
-              </div>
-            ))}
-          </div>
-        </>
+          {misProductos.map(p => (
+            <div key={p.id} style={styles.card}>
+
+              <h4>{p.nombre}</h4>
+              <p>${p.precio}</p>
+
+              <button onClick={() => editar(p)}>✏️ Editar</button>
+              <button onClick={() => borrar(p.id)}>🗑 Borrar</button>
+              <button onClick={() => destacar(p)}>⭐ Destacar</button>
+
+            </div>
+          ))}
+        </div>
       )}
 
     </div>
@@ -211,107 +236,14 @@ export default function Home() {
 }
 
 const styles = {
-  container: {
-    background: "#ffe600",
-    minHeight: "100vh",
-    padding: 15,
-    fontFamily: "Arial"
-  },
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 15
-  },
-  headerRight: {
-    display: "flex",
-    gap: 10,
-    alignItems: "center"
-  },
-  user: {
-    fontSize: 12
-  },
-  search: {
-    width: "100%",
-    padding: 12,
-    borderRadius: 8,
-    border: "none",
-    marginBottom: 10
-  },
-  menu: {
-    display: "flex",
-    gap: 10,
-    marginBottom: 15
-  },
-  menuBtn: {
-    flex: 1,
-    padding: 10,
-    borderRadius: 8,
-    border: "none",
-    background: "#3483fa",
-    color: "white"
-  },
-  cardForm: {
-    background: "white",
-    padding: 15,
-    borderRadius: 12,
-    marginBottom: 15,
-    boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
-  },
-  input: {
-    width: "100%",
-    padding: 10,
-    marginBottom: 10,
-    borderRadius: 6,
-    border: "1px solid #ddd"
-  },
-  btnPrimary: {
-    width: "100%",
-    padding: 12,
-    background: "#3483fa",
-    color: "white",
-    border: "none",
-    borderRadius: 8
-  },
-  btnSmall: {
-    padding: 6,
-    background: "#3483fa",
-    color: "white",
-    border: "none",
-    borderRadius: 6
-  },
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: 10
-  },
-  card: {
-    background: "white",
-    borderRadius: 12,
-    overflow: "hidden",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
-  },
-  img: {
-    width: "100%",
-    height: 120,
-    objectFit: "cover"
-  },
-  info: {
-    padding: 10
-  },
-  price: {
-    fontWeight: "bold",
-    margin: "5px 0"
-  },
-  cat: {
-    fontSize: 12,
-    color: "#555"
-  },
-  wa: {
-    width: "100%",
-    padding: 10,
-    background: "#25D366",
-    color: "white",
-    border: "none"
-  }
+  container: { background: "#ffe600", minHeight: "100vh", padding: 15 },
+  header: { display: "flex", justifyContent: "space-between" },
+  search: { width: "100%", padding: 10, margin: "10px 0" },
+  menu: { display: "flex", gap: 10, marginBottom: 10 },
+  form: { background: "white", padding: 10, marginBottom: 10, borderRadius: 10 },
+  grid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
+  card: { background: "white", padding: 10, borderRadius: 10, position: "relative" },
+  badge: { position: "absolute", top: 5, right: 5, background: "gold", padding: "2px 6px", fontSize: 12 },
+  img: { width: "100%", height: 120, objectFit: "cover" },
+  wa: { width: "100%", background: "#25D366", color: "white", padding: 8, border: "none" }
 };
