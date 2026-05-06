@@ -19,14 +19,21 @@ export default function Sponsor() {
   const guardar = async () => {
     if (!nombre) return alert("Falta nombre");
 
+    const hoy = new Date();
+    const vencimiento = new Date();
+    vencimiento.setDate(hoy.getDate() + 30); // 30 días
+
     await addDoc(collection(db, "sponsors"), {
       nombre,
       logo,
       link,
       activo: true,
+      creado: hoy,
+      vence: vencimiento,
     });
 
-    alert("Sponsor creado 🚀");
+    alert("Sponsor activado por 30 días 🚀");
+
     setNombre("");
     setLogo("");
     setLink("");
@@ -57,7 +64,7 @@ export default function Sponsor() {
       <br /><br />
 
       <button onClick={guardar}>
-        Guardar Sponsor
+        Activar Sponsor
       </button>
     </div>
   );
