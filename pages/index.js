@@ -3,7 +3,10 @@ import { useEffect, useState } from "react";
 import { db, auth } from "../lib/firebase";
 import {
   collection,
-  getDocs
+  getDocs,
+  updateDoc,
+  doc,
+  increment
 } from "firebase/firestore";
 import {
   GoogleAuthProvider,
@@ -55,42 +58,23 @@ export default function Home() {
     p => p.usuario === vendedor
   );
 
-  // 🏆 PAGO SPONSOR
-  const serSponsor = async () => {
+  // 💥 CLICK EN SPONSOR (CON TRACKING)
+  const abrirSponsor = async (s) => {
     try {
-      const res = await fetch("/api/pago", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          tipo: "sponsor",
-        }),
+      // incrementar clicks
+      await updateDoc(doc(db, "sponsors", s.id), {
+        clicks: increment(1),
       });
 
-      const data = await res.json();
-
-      window.open(
-        `https://www.mercadopago.com.ar/checkout/v1/redirect?pref_id=${data.id}`,
-        "_blank"
-      );
+      // abrir link
+      if (s.link) {
+        window.open(s.link, "_blank");
+      }
 
     } catch (err) {
-      alert("Error al iniciar pago");
+      console.log(err);
     }
   };
-
-  // 🔥 FILTRO DE SPONSORS ACTIVOS Y NO VENCIDOS
-  const sponsorsActivos = sponsors.filter(s => {
-    if (!s.activo) return false;
-
-    if (!s.vence) return true;
-
-    const hoy = new Date();
-    const vencimiento = new Date(s.vence.seconds * 1000);
-
-    return vencimiento > hoy;
-  });
 
   return (
     <div style={{ padding: 20, background: "#ffe600", minHeight: "100vh" }}>
@@ -107,41 +91,42 @@ export default function Home() {
 
       <hr />
 
+      {/* 🏆 SPONSORS */}
       {vista === "home" && (
         <>
-          {/* 🏆 SPONSORS */}
           <h3>🏆 Sponsors</h3>
 
           <div style={{ display: "flex", gap: 10, overflowX: "auto" }}>
-            {sponsorsActivos.map(s => (
-              <div key={s.id} style={{ background: "white", padding: 10 }}>
-                <img
-                  src={s.logo || "https://via.placeholder.com/80"}
-                  style={{ width: 80, height: 80, objectFit: "contain" }}
-                  onClick={() => window.open(s.link || "#")}
-                />
-              </div>
-            ))}
+            {sponsors
+              .filter(s => s.activo)
+              .map(s => (
+                <div
+                  key={s.id}
+                  style={{
+                    background: "white",
+                    padding: 10,
+                    cursor: "pointer"
+                  }}
+                  onClick={() => abrirSponsor(s)}
+                >
+                  <img
+                    src={s.logo || "https://via.placeholder.com/80"}
+                    style={{ width: 80, height: 80, objectFit: "contain" }}
+                  />
+
+                  <p style={{ fontSize: 12 }}>
+                    👁 {s.clicks || 0}
+                  </p>
+                </div>
+              ))}
           </div>
 
-          <br />
-
-          {/* 💥 BOTÓN SPONSOR */}
-          <button
-            onClick={serSponsor}
-            style={{
-              background: "black",
-              color: "white",
-              padding: 10,
-              borderRadius: 10,
-              width: "100%",
-            }}
-          >
-            🚀 Quiero ser sponsor
-          </button>
-
           <hr />
+        </>
+      )}
 
+      {vista === "home" && (
+        <>
           <h3>Productos</h3>
 
           {productos.map(p => (
