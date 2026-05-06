@@ -55,6 +55,31 @@ export default function Home() {
     p => p.usuario === vendedor
   );
 
+  // 🏆 PAGO SPONSOR
+  const serSponsor = async () => {
+    try {
+      const res = await fetch("/api/pago", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          tipo: "sponsor",
+        }),
+      });
+
+      const data = await res.json();
+
+      window.open(
+        `https://www.mercadopago.com.ar/checkout/v1/redirect?pref_id=${data.id}`,
+        "_blank"
+      );
+
+    } catch (err) {
+      alert("Error al iniciar pago");
+    }
+  };
+
   return (
     <div style={{ padding: 20, background: "#ffe600", minHeight: "100vh" }}>
       <h2>🛍 Mercado Junín</h2>
@@ -70,9 +95,9 @@ export default function Home() {
 
       <hr />
 
-      {/* 🔥 SPONSORS */}
       {vista === "home" && (
         <>
+          {/* 🏆 SPONSORS */}
           <h3>🏆 Sponsors</h3>
 
           <div style={{ display: "flex", gap: 10, overflowX: "auto" }}>
@@ -81,20 +106,32 @@ export default function Home() {
               .map(s => (
                 <div key={s.id} style={{ background: "white", padding: 10 }}>
                   <img
-                    src={s.logo}
+                    src={s.logo || "https://via.placeholder.com/80"}
                     style={{ width: 80, height: 80, objectFit: "contain" }}
-                    onClick={() => window.open(s.link)}
+                    onClick={() => window.open(s.link || "#")}
                   />
                 </div>
               ))}
           </div>
 
-          <hr />
-        </>
-      )}
+          <br />
 
-      {vista === "home" && (
-        <>
+          {/* 💥 BOTÓN SPONSOR */}
+          <button
+            onClick={serSponsor}
+            style={{
+              background: "black",
+              color: "white",
+              padding: 10,
+              borderRadius: 10,
+              width: "100%",
+            }}
+          >
+            🚀 Quiero ser sponsor
+          </button>
+
+          <hr />
+
           <h3>Productos</h3>
 
           {productos.map(p => (
