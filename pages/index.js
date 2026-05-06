@@ -80,6 +80,18 @@ export default function Home() {
     }
   };
 
+  // 🔥 FILTRO DE SPONSORS ACTIVOS Y NO VENCIDOS
+  const sponsorsActivos = sponsors.filter(s => {
+    if (!s.activo) return false;
+
+    if (!s.vence) return true;
+
+    const hoy = new Date();
+    const vencimiento = new Date(s.vence.seconds * 1000);
+
+    return vencimiento > hoy;
+  });
+
   return (
     <div style={{ padding: 20, background: "#ffe600", minHeight: "100vh" }}>
       <h2>🛍 Mercado Junín</h2>
@@ -101,17 +113,15 @@ export default function Home() {
           <h3>🏆 Sponsors</h3>
 
           <div style={{ display: "flex", gap: 10, overflowX: "auto" }}>
-            {sponsors
-              .filter(s => s.activo)
-              .map(s => (
-                <div key={s.id} style={{ background: "white", padding: 10 }}>
-                  <img
-                    src={s.logo || "https://via.placeholder.com/80"}
-                    style={{ width: 80, height: 80, objectFit: "contain" }}
-                    onClick={() => window.open(s.link || "#")}
-                  />
-                </div>
-              ))}
+            {sponsorsActivos.map(s => (
+              <div key={s.id} style={{ background: "white", padding: 10 }}>
+                <img
+                  src={s.logo || "https://via.placeholder.com/80"}
+                  style={{ width: 80, height: 80, objectFit: "contain" }}
+                  onClick={() => window.open(s.link || "#")}
+                />
+              </div>
+            ))}
           </div>
 
           <br />
