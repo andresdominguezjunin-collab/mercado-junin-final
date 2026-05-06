@@ -4,9 +4,7 @@ import { db, auth } from "../lib/firebase";
 import {
   collection,
   getDocs,
-  updateDoc,
-  doc,
-  increment
+  addDoc
 } from "firebase/firestore";
 import {
   GoogleAuthProvider,
@@ -58,18 +56,22 @@ export default function Home() {
     p => p.usuario === vendedor
   );
 
-  // 💥 CLICK EN SPONSOR (CON TRACKING)
-  const abrirSponsor = async (s) => {
+  // 💬 TRACKING + WHATSAPP
+  const abrirWhatsApp = async (producto) => {
     try {
-      // incrementar clicks
-      await updateDoc(doc(db, "sponsors", s.id), {
-        clicks: increment(1),
+      // guardar consulta en Firebase
+      await addDoc(collection(db, "mensajes"), {
+        producto: producto.nombre,
+        vendedor: producto.usuario,
+        fecha: new Date()
       });
 
-      // abrir link
-      if (s.link) {
-        window.open(s.link, "_blank");
-      }
+      // abrir WhatsApp
+      const texto = `Hola, te consulto por ${producto.nombre}`;
+      window.open(
+        `https://wa.me/?text=${encodeURIComponent(texto)}`,
+        "_blank"
+      );
 
     } catch (err) {
       console.log(err);
@@ -90,40 +92,6 @@ export default function Home() {
       )}
 
       <hr />
-
-      {/* 🏆 SPONSORS */}
-      {vista === "home" && (
-        <>
-          <h3>🏆 Sponsors</h3>
-
-          <div style={{ display: "flex", gap: 10, overflowX: "auto" }}>
-            {sponsors
-              .filter(s => s.activo)
-              .map(s => (
-                <div
-                  key={s.id}
-                  style={{
-                    background: "white",
-                    padding: 10,
-                    cursor: "pointer"
-                  }}
-                  onClick={() => abrirSponsor(s)}
-                >
-                  <img
-                    src={s.logo || "https://via.placeholder.com/80"}
-                    style={{ width: 80, height: 80, objectFit: "contain" }}
-                  />
-
-                  <p style={{ fontSize: 12 }}>
-                    👁 {s.clicks || 0}
-                  </p>
-                </div>
-              ))}
-          </div>
-
-          <hr />
-        </>
-      )}
 
       {vista === "home" && (
         <>
@@ -155,15 +123,7 @@ export default function Home() {
 
               <br />
 
-              <button
-                onClick={() =>
-                  window.open(
-                    `https://wa.me/?text=${encodeURIComponent(
-                      "Hola, te consulto por " + p.nombre
-                    )}`
-                  )
-                }
-              >
+              <button onClick={() => abrirWhatsApp(p)}>
                 WhatsApp
               </button>
             </div>
