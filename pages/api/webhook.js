@@ -1,28 +1,38 @@
 import mercadopago from "mercadopago";
-import { db } from "../../lib/firebase";
-import { doc, updateDoc } from "firebase/firestore";
+
+mercadopago.configure({
+  access_token: process.env.MP_ACCESS_TOKEN,
+});
 
 export default async function handler(req, res) {
+  const { productoId } = req.body;
+
   try {
-    const payment = req.body;
+    const preference = {
+      items: [
+        {
+          title: "Destacar producto",
+          quantity: 1,
+          currency_id: "ARS",
+          unit_price: 1000,
+        },
+      ],
+      metadata: {
+        productoId: productoId,
+      },
+      notification_url: "https://TU-APP.vercel.app/api/webhook",
+      back_urls: {
+        success: "https://TU-APP.vercel.app",
+        failure: "https://TU-APP.vercel.app",
+      },
+      auto_return: "approved",
+    };
 
-    if (payment.type === "payment") {
-      const paymentData = await mercadopago.payment.findById(payment.data.id);
+    const response = await mercadopago.preferences.create(preference);
 
-      if (paymentData.body.status === "approved") {
-        const productoId = paymentData.body.metadata.productoId;
-
-        if (productoId) {
-          await updateDoc(doc(db, "productos", productoId), {
-            destacado: true,
-          });
-        }
-      }
-    }
-
-    res.status(200).send("ok");
+    res.status(200).json({ id: response.body.id });
 
   } catch (error) {
-    res.status(500).send("error");
+    res.status(500).json({ error: error.message });
   }
 }
