@@ -1,0 +1,6 @@
+{
+  "nombre": "Tienda X",
+  "logo": "URL o imagen base64",
+  "link": "https://wa.me/...",
+  "activo": true
+}
